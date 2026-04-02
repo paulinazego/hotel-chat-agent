@@ -15,6 +15,10 @@ app.use(express.static(path.join(__dirname)));
 // Leer el knowledge base al iniciar
 const knowledgeBase = fs.readFileSync(path.join(__dirname, 'KNOWLEDGE_BASE.md'), 'utf-8');
 
+if (!process.env.GROQ_API_KEY) {
+  console.error('ERROR: La variable de entorno GROQ_API_KEY no está definida.');
+  process.exit(1);
+}
 const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 app.post('/chat', async (req, res) => {
