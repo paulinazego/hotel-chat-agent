@@ -1,26 +1,30 @@
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
 const path = require('path');
-const Groq = require('groq-sdk');
+const fs = require('fs');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
-
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname)));
 
-// Leer el knowledge base al iniciar
+const PORT = process.env.PORT || 3001;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+
+if (!GROQ_API_KEY) {
+  console.warn('WARNING: GROQ_API_KEY no definida.');
+}
+
 const knowledgeBase = fs.readFileSync(path.join(__dirname, 'KNOWLEDGE_BASE.md'), 'utf-8');
 
-if (!process.env.GROQ_API_KEY) {
-  console.warn('WARNING: GROQ_API_KEY no está definida. El chat no funcionará.');
-}
-const client = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 app.post('/chat', async (req, res) => {
+  if (!GROQ_API_KEY) {
+    return res.status(503).json({ error: 'El asistente no está disponible. Falta configuración del servidor.' });
+  }
+
   const { message, hotel } = req.body;
 
   if (!message || typeof message !== 'string' || message.trim() === '') {
@@ -34,36 +38,35 @@ app.post('/chat', async (req, res) => {
       ? 'El usuario está consultando sobre el HOTEL BELLAVISTA específicamente.'
       : 'El usuario está consultando sobre ambos hoteles (Hotel Bonito y Hotel Bellavista).';
 
-  const systemPrompt = `${knowledgeBase}
-
----
-
-CONTEXTO ACTUAL: ${hotelContext}
-Responde siempre en español. Sé cálido, claro y conciso. Usa emojis con moderación.`;
-
-  if (!client) {
-    return res.status(503).json({ error: 'El asistente no está disponible en este momento. Por favor intenta más tarde.' });
-  }
+  const systemPrompt = `${knowledgeBase}\n\n---\n\nCONTEXTO ACTUAL: ${hotelContext}\nResponde siempre en español. Sé cálido, claro y conciso. Usa emojis con moderación.`;
 
   try {
-    const response = await client.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: 1024,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: message.trim() },
-      ],
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 1024,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: message.trim() },
+        ],
+      }),
     });
 
-    const reply = response.choices[0]?.message?.content ?? 'Lo siento, no pude generar una respuesta.';
+    const data = await response.json();
+    const reply = data.choices?.[0]?.message?.content ?? 'Lo siento, no pude generar una respuesta.';
     res.json({ reply });
   } catch (err) {
-    console.error('Error al llamar a la API de Anthropic:', err.message);
+    console.error('Error al llamar a Groq:', err.message);
     res.status(500).json({ error: 'Error al comunicarse con el asistente. Intenta de nuevo.' });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Servidor corriendo en puerto ${PORT}`);
-  console.log(`GROQ_API_KEY presente: ${!!process.env.GROQ_API_KEY}`);
+  console.log(`Servidor corriendo en puerto ${PORT}`);
+  console.log(`GROQ_API_KEY presente: ${!!GROQ_API_KEY}`);
 });
