@@ -10,10 +10,6 @@ app.use(express.json());
 const PORT = process.env.PORT || 3001;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-if (!GROQ_API_KEY) {
-  console.warn('WARNING: GROQ_API_KEY no definida.');
-}
-
 const knowledgeBase = fs.readFileSync(path.join(__dirname, 'KNOWLEDGE_BASE.md'), 'utf-8');
 
 app.get('/', (req, res) => {
