@@ -4,7 +4,7 @@
   "description": "Agente de chat para Hotel Bonito y Hotel Bellavista",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node test-server.js",
     "dev": "nodemon server.js"
   },
   "dependencies": {
