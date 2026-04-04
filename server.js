@@ -7,8 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3001;
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const PORT = process.env.PORT || 3000;
 
 const knowledgeBase = fs.readFileSync(path.join(__dirname, 'KNOWLEDGE_BASE.md'), 'utf-8');
 
@@ -17,10 +16,6 @@ app.get('/', (req, res) => {
 });
 
 app.post('/chat', async (req, res) => {
-  if (!GROQ_API_KEY) {
-    return res.status(503).json({ error: 'El asistente no está disponible. Falta configuración del servidor.' });
-  }
-
   const { message, hotel } = req.body;
 
   if (!message || typeof message !== 'string' || message.trim() === '') {
@@ -40,7 +35,7 @@ app.post('/chat', async (req, res) => {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -57,12 +52,11 @@ app.post('/chat', async (req, res) => {
     const reply = data.choices?.[0]?.message?.content ?? 'Lo siento, no pude generar una respuesta.';
     res.json({ reply });
   } catch (err) {
-    console.error('Error al llamar a Groq:', err.message);
-    res.status(500).json({ error: 'Error al comunicarse con el asistente. Intenta de nuevo.' });
+    console.error('Error:', err.message);
+    res.status(500).json({ error: 'Error al comunicarse con el asistente.' });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
-  console.log(`GROQ_API_KEY presente: ${!!GROQ_API_KEY}`);
+  console.log('Servidor corriendo en puerto ' + PORT);
 });
