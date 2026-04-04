@@ -15,6 +15,9 @@ app.use(express.static(path.join(__dirname)));
 // Leer el knowledge base al iniciar
 const knowledgeBase = fs.readFileSync(path.join(__dirname, 'KNOWLEDGE_BASE.md'), 'utf-8');
 
+if (!process.env.GROQ_API_KEY) {
+  console.warn('WARNING: GROQ_API_KEY no está definida. El chat no funcionará.');
+}
 const client = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
 
 app.post('/chat', async (req, res) => {
@@ -61,5 +64,6 @@ Responde siempre en español. Sé cálido, claro y conciso. Usa emojis con moder
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`✅ Servidor corriendo en puerto ${PORT}`);
+  console.log(`GROQ_API_KEY presente: ${!!process.env.GROQ_API_KEY}`);
 });
