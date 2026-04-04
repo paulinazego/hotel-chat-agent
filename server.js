@@ -15,11 +15,7 @@ app.use(express.static(path.join(__dirname)));
 // Leer el knowledge base al iniciar
 const knowledgeBase = fs.readFileSync(path.join(__dirname, 'KNOWLEDGE_BASE.md'), 'utf-8');
 
-if (!process.env.GROQ_API_KEY) {
-  console.error('ERROR: La variable de entorno GROQ_API_KEY no está definida.');
-  process.exit(1);
-}
-const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const client = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
 
 app.post('/chat', async (req, res) => {
   const { message, hotel } = req.body;
@@ -41,6 +37,10 @@ app.post('/chat', async (req, res) => {
 
 CONTEXTO ACTUAL: ${hotelContext}
 Responde siempre en español. Sé cálido, claro y conciso. Usa emojis con moderación.`;
+
+  if (!client) {
+    return res.status(503).json({ error: 'El asistente no está disponible en este momento. Por favor intenta más tarde.' });
+  }
 
   try {
     const response = await client.chat.completions.create({
